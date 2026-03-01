@@ -42,22 +42,17 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task, onUpdate, onBack }
     }, 0);
 
     const exportMarkdown = () => {
-        const mdContent = `---
-id: ${task.id}
-title: ${task.title}
-createdAt: ${task.createdAt}
-deadline: ${task.deadline || 'None'}
-status: ${task.status}
-score: ${totalScore.toFixed(0)}%
----
-
-${task.description}
-`;
+        // Include title at the top of the markdown file as an H1
+        const mdContent = `# ${task.title}\n\n${task.description}`;
         const blob = new Blob([mdContent], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `logic-task-${task.id.substring(0, 6)}.md`;
+
+        // Sanitize title for filename
+        const safeTitle = task.title.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'task';
+        a.download = `${safeTitle}.md`;
+
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
