@@ -23,13 +23,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, onUpdate, onDelete,
         const reader = new FileReader();
         reader.onload = (event) => {
             const content = event.target?.result as string;
-            const bodyMatch = content.split('---');
-            if (bodyMatch.length >= 3) {
-                const body = bodyMatch.slice(2).join('---').trim();
-                const titleMatch = bodyMatch[1].match(/title:\s*(.+)/);
+            const frontmatterRegex = /^---\s*[\r\n]+([\s\S]*?)[\r\n]+---\s*[\r\n]+/;
+            const match = content.match(frontmatterRegex);
+            
+            if (match) {
+                const frontmatter = match[1];
+                const body = content.slice(match[0].length).trim();
+                const titleMatch = frontmatter.match(/title:\s*(.+)/);
                 setImportCandidate({ title: titleMatch ? titleMatch[1].trim() : 'Imported Logic Task', description: body, deadline: null });
             } else {
-                setImportCandidate({ title: 'Imported Logic Task', description: content, deadline: null });
+                const h1Regex = /^#\s+(.+)/;
+                const titleMatch = content.match(h1Regex);
+                let title = 'Imported Logic Task';
+                if (titleMatch) {
+                    title = titleMatch[1].trim();
+                }
+                setImportCandidate({ title, description: content, deadline: null });
             }
         };
         reader.readAsText(file);
