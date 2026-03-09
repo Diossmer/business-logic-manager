@@ -4,7 +4,8 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import rehypeRaw from 'rehype-raw';
 import { useTheme } from '../hooks/useTheme';
-import { MermaidRenderer } from './MermaidRenderer';
+import{ MermaidRenderer }from './MermaidRenderer';
+import rehypeSlug from 'rehype-slug';
 
 // @ts-ignore
 import lightCss from 'github-markdown-css/github-markdown-light.css?raw';
@@ -26,7 +27,7 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content, classNa
 
             <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkBreaks]}
-                rehypePlugins={[rehypeRaw]}
+                rehypePlugins={[rehypeRaw, rehypeSlug]}
                 components={{
                     code({ node, inline, className, children, ...props }: any) {
                         const match = /language-(\w+)/.exec(className || '');
@@ -40,6 +41,37 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content, classNa
                         );
                     },
                     a({ node, href, children, ...props }: any) {
+                        const isInternalAnchor = href?.startsWith('#');
+
+                        if (isInternalAnchor) {
+                            return (
+                                <a
+                                    href={href}
+                                    className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        const targetId = href.substring(1);
+                                        // Need to decode URI component in case of spaces/special chars in id
+                                        try {
+                                            const decodedTargetId = decodeURIComponent(targetId);
+                                            const element = document.getElementById(decodedTargetId) || document.getElementById(targetId);
+                                            if (element) {
+                                                element.scrollIntoView({ behavior: 'smooth' });
+                                            }
+                                        } catch (e) {
+                                            const element = document.getElementById(targetId);
+                                            if (element) {
+                                                element.scrollIntoView({ behavior: 'smooth' });
+                                            }
+                                        }
+                                    }}
+                                    {...props}
+                                >
+                                    {children}
+                                </a>
+                            );
+                        }
+
                         return (
                             <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" {...props}>
                                 {children}
