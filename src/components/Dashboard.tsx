@@ -28,7 +28,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks, onUpdate, onDelete,
             
             if (match) {
                 const frontmatter = match[1];
-                const body = content.slice(match[0].length).trim();
+                const body = content.slice(match[0].length).replace(/^\\s*[\\r\\n]/, '').trimEnd();
                 const titleMatch = frontmatter.match(/title:\s*(.+)/);
                 setImportCandidate({ title: titleMatch ? titleMatch[1].trim() : 'Imported Logic Task', description: body, deadline: null });
             } else {

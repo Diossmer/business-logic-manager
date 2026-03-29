@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
 import rehypeRaw from 'rehype-raw';
 import { useTheme } from '../hooks/useTheme';
 import{ MermaidRenderer }from './MermaidRenderer';
@@ -22,11 +21,15 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content, classNa
 
     return (
         <div className={`markdown-body ${className}`} style={{ backgroundColor: 'transparent', padding: 0 }}>
-            {/* Inject the exact GitHub specific markdown styling matching current theme context */}
-            <style dangerouslySetInnerHTML={{ __html: resolvedTheme === 'dark' ? darkCss : lightCss }} />
+            {/* Inject the exact GitHub specific markdown styling matching current theme context and preserve whitespace exclusively for root text blocks */}
+            <style dangerouslySetInnerHTML={{ __html: (resolvedTheme === 'dark' ? darkCss : lightCss) + `
+            .markdown-body > p {
+                white-space: pre-wrap;
+            }
+            ` }} />
 
             <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkBreaks]}
+                remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw, rehypeSlug]}
                 components={{
                     code({ node, inline, className, children, ...props }: any) {
