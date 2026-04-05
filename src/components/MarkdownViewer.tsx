@@ -14,10 +14,15 @@ import darkCss from 'github-markdown-css/github-markdown-dark.css?raw';
 interface MarkdownViewerProps {
     content: string;
     className?: string;
+    onCheckboxToggle?: (index: number) => void;
 }
 
-export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content, className = '' }) => {
+export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content, className = '', onCheckboxToggle }) => {
     const { resolvedTheme } = useTheme();
+    
+    // Stable mapping for AST nodes to prevent React StrictMode double-render index shifting
+    const astNodeIndexMap = React.useRef(new WeakMap<any, number>());
+    let nextAstIndex = 0;
 
     return (
         <div className={`markdown-body ${className}`} style={{ backgroundColor: 'transparent', padding: 0 }}>
@@ -42,6 +47,29 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ content, classNa
                                 {children}
                             </code>
                         );
+                    },
+                    input({ node, type, checked, disabled, readOnly, ...props }: any) {
+                        if (type === 'checkbox') {
+                            let currentIndex = 0;
+                            if (node && astNodeIndexMap.current.has(node)) {
+                                currentIndex = astNodeIndexMap.current.get(node)!;
+                            } else {
+                                currentIndex = nextAstIndex++;
+                                if (node) astNodeIndexMap.current.set(node, currentIndex);
+                            }
+
+                            return (
+                                <input 
+                                    {...props}
+                                    type="checkbox" 
+                                    checked={checked} 
+                                    disabled={!onCheckboxToggle}
+                                    onChange={() => onCheckboxToggle?.(currentIndex)}
+                                    className={onCheckboxToggle ? "cursor-pointer w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600" : ""}
+                                />
+                            );
+                        }
+                        return <input type={type} checked={checked} disabled={disabled} readOnly={readOnly} {...props} />;
                     },
                     a({ node, href, children, ...props }: any) {
                         const isInternalAnchor = href?.startsWith('#');

@@ -25,6 +25,27 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task, onUpdate, onBack }
     const [isFullscreen, setIsFullscreen] = React.useState(false);
     const currentEvaluations = task.evaluation || [];
 
+    const handleCheckboxToggle = (index: number) => {
+        let currentIndex = 0;
+        const newDescription = task.description.replace(/(^|\n)(\s*(?:[-*+]|\d+\.)\s+)\[([ xX])\]/g, (match, leadingNewline, prefix, state) => {
+            if (currentIndex === index) {
+                currentIndex++;
+                const newState = (state === ' ' ? 'x' : ' ');
+                return `${leadingNewline}${prefix}[${newState}]`;
+            }
+            currentIndex++;
+            return match;
+        });
+
+        if (newDescription !== task.description) {
+            onUpdate(task.id, { description: newDescription });
+        }
+    };
+
+    const totalCheckboxes = (task.description.match(/(^|\n)(\s*(?:[-*+]|\d+\.)\s+)\[([ xX])\]/g) || []).length;
+    const checkedCheckboxes = (task.description.match(/(^|\n)(\s*(?:[-*+]|\d+\.)\s+)\[([xX])\]/g) || []).length;
+    const checklistPercentage = totalCheckboxes > 0 ? (checkedCheckboxes / totalCheckboxes) * 100 : 0;
+
     const handleScoreChange = (criterionId: string, score: number) => {
         let newEvals = [...currentEvaluations];
         const idx = newEvals.findIndex(e => e.criterion === criterionId);
@@ -42,10 +63,13 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task, onUpdate, onBack }
         return currentEvaluations.find(e => e.criterion === criterionId)?.score || 0;
     };
 
-    const totalScore = EVALUATION_CRITERIA.reduce((acc, c) => {
+
+    const manualScore = EVALUATION_CRITERIA.reduce((acc, c) => {
         const score = getScore(c.id);
         return acc + (score * (c.weight / 100));
     }, 0);
+
+    const totalScore = totalCheckboxes > 0 ? checklistPercentage : manualScore;
 
     const exportMarkdown = () => {
         // Include title at the top of the markdown file as an H1
@@ -184,7 +208,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task, onUpdate, onBack }
                 </div>
                 <div className="flex-1 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 p-6 md:p-10 w-full max-w-[96vw] mx-auto" id="markdown-preview-content">
                     <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-8 pb-6 border-b border-gray-100 dark:border-gray-800 tracking-tight">{task.title}</h1>
-                    <MarkdownViewer content={task.description} />
+                    <MarkdownViewer content={task.description} onCheckboxToggle={handleCheckboxToggle} />
                 </div>
             </div>
         );
@@ -234,7 +258,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task, onUpdate, onBack }
                 {/* Important: github-markdown-css configuration for markdown content */}
                 <div className="p-6 md:p-8 overflow-x-auto bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800" id="markdown-preview-content">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6 hidden" style={{ display: 'none' }}>{task.title}</h1>
-                    <MarkdownViewer content={task.description} />
+                    <MarkdownViewer content={task.description} onCheckboxToggle={handleCheckboxToggle} />
                 </div>
             </div>
 
@@ -251,22 +275,42 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task, onUpdate, onBack }
                 </div>
 
                 <div className="space-y-8">
-                    {EVALUATION_CRITERIA.map(c => (
-                        <div key={c.id} className="group">
+                    {totalCheckboxes > 0 ? (
+                        <div className="group bg-blue-50/50 dark:bg-blue-900/10 p-5 rounded-xl border border-blue-100 dark:border-blue-900/30">
                             <div className="flex justify-between mb-3">
-                                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">{c.label} <span className="text-gray-400 dark:text-gray-500 font-normal">(Weight: {c.weight}%)</span></label>
-                                <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{getScore(c.id)} <span className="text-gray-400 dark:text-gray-500 font-normal">/ 100</span></span>
+                                <label className="text-sm font-semibold text-blue-800 dark:text-blue-300">
+                                    Markdown Phases Progress 
+                                    <span className="ml-2 text-blue-500 dark:text-blue-400 font-normal">({checkedCheckboxes} of {totalCheckboxes} completed)</span>
+                                </label>
+                                <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                                    {Math.round(checklistPercentage)} <span className="text-gray-400 dark:text-gray-500 font-normal">%</span>
+                                </span>
                             </div>
-                            <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                value={getScore(c.id)}
-                                onChange={(e) => handleScoreChange(c.id, parseInt(e.target.value))}
-                                className="w-full h-2.5 bg-gray-100 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600 dark:accent-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all border border-gray-200 dark:border-gray-600"
-                            />
+                            <div className="w-full h-3 bg-blue-100/50 dark:bg-gray-700/50 rounded-lg overflow-hidden flex border border-blue-200/50 dark:border-gray-600/50">
+                                <div 
+                                    className="h-full bg-blue-600 dark:bg-blue-500 transition-all duration-500 ease-out"
+                                    style={{ width: `${checklistPercentage}%` }}
+                                />
+                            </div>
                         </div>
-                    ))}
+                    ) : (
+                        EVALUATION_CRITERIA.map(c => (
+                            <div key={c.id} className="group">
+                                <div className="flex justify-between mb-3">
+                                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">{c.label} <span className="text-gray-400 dark:text-gray-500 font-normal">(Weight: {c.weight}%)</span></label>
+                                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{getScore(c.id)} <span className="text-gray-400 dark:text-gray-500 font-normal">/ 100</span></span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={getScore(c.id)}
+                                    onChange={(e) => handleScoreChange(c.id, parseInt(e.target.value))}
+                                    className="w-full h-2.5 bg-gray-100 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600 dark:accent-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all border border-gray-200 dark:border-gray-600"
+                                />
+                            </div>
+                        ))
+                    )}
                 </div>
 
                 {totalScore === 100 && task.status !== 'completed' && (
